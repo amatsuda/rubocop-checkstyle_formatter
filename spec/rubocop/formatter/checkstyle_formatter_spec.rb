@@ -1,19 +1,27 @@
 # encoding: utf-8
 
 require 'spec_helper'
+require 'rubocop/rspec/cop_helper'
 require 'stringio'
 require 'rexml/document'
 
 module RuboCop
   module Formatter
     describe CheckstyleFormatter do
+      include CopHelper
+
       let(:severities) { %i[refactor convention warning error fatal] }
       let(:cop) do
         Cop::Cop.new.tap do |c|
-          c.send(:begin_investigation, RuboCop::ProcessedSource.new(file, 2.7, 'sample.rb'))
+          processed_source = RuboCop::ProcessedSource.new(file, 2.7, 'sample.rb')
+          if RuboCop::Version.version >= '1.40.0'
+            processed_source.registry = registry
+          end
+          c.send(:begin_investigation, processed_source)
           source_buffer = Parser::Source::Buffer.new('sample.rb', 1).tap { |b| b.source = '' }
           severities.each_with_index do |severity, index|
-            c.add_offense(nil, location: Parser::Source::Range.new(source_buffer, 0, index), message: severity.to_s)
+            range = Parser::Source::Range.new(source_buffer, 0, index)
+            c.add_offense(processed_source.ast, location: range, message: severity.to_s)
           end
         end
       end
